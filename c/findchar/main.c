@@ -3,7 +3,7 @@
 #define MAX_LINE_LEN 1000
 
 int get_line(char line[], int max);
-int rstrindex(char line[], char t);
+int strrindex(char line[], char t);
 
 int main() {
   char line[MAX_LINE_LEN];
@@ -11,7 +11,7 @@ int main() {
 
   int len = get_line(line, MAX_LINE_LEN);
 
-  printf("Index: %i\n", rstrindex(line, getchar()));
+  printf("Index: %i\n", strrindex(line, getchar()));
 }
 
 int get_line(char line[], int max) {
@@ -27,7 +27,7 @@ int get_line(char line[], int max) {
   return i;
 }
 
-int rstrindex(char line[], char t) {
+int strrindex(char line[], char t) {
   int i = 0;
   int fidx = -1;
 

@@ -2,3 +2,5 @@
 *.beam
 *.pyc
 *.class
+*.o
+*.out
