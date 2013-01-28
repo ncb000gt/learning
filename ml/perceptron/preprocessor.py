@@ -34,12 +34,17 @@ def strip_stopwords():
 			del(words[word])
 
 def count_words(lines):
+	doc_words = {}
 	for line in lines:
 		split = string.split(line)
 		for s in split:
 			if s not in words:
 				words[s] = 0
+			if s not in doc_words:
+				doc_words[s] = 0
 			words[s] += 1
+			doc_words[s] += 1
+	return doc_words
 
 def find_boundary(lines):
 	for line in lines:
@@ -98,12 +103,15 @@ for f in files:
 	boundary = find_boundary(contents)
 	boundaries = split_boundaries(contents, boundary)
 	chosen = pick_boundary(boundaries)
-	documents[f] = chosen
-
-for document in documents:
-	count_words(documents[document])
-
-strip_stopwords()
+	strip_stopwords()
+	doc_words = count_words(chosen)
+	doc_words_count = len(doc_words.keys())
+	for word in doc_words:
+		doc_words[word] /= doc_words_count
+	documents[f] = {
+			"words": doc_words,
+			"word_count": doc_words_count
+			}
 
 
 tmp = {
