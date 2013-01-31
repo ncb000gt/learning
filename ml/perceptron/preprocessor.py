@@ -6,6 +6,8 @@ import string
 parser = argparse.ArgumentParser(description="Prepare for perceptron.")
 parser.add_argument("--input",required=True,help="Specify the input data directory.")
 parser.add_argument("--output",required=True,help="Specify the output file.")
+parser.add_argument("--offset",help="Where to start processing files from.",type=int,default=0)
+parser.add_argument("--limit",help="Where to limit processing files from.",type=int)
 args = parser.parse_args()
 
 stop_words = ['a','able','about','across','after','all','almost','also','am','among',
@@ -22,7 +24,7 @@ stop_words = ['a','able','about','across','after','all','almost','also','am','am
 re_boundary = re.compile("boundary\=\"([^\"]*)\"")
 re_newline_boundary = re.compile("^\n")
 re_plain_text = re.compile("text\/plain")
-d = args.input #"/home/ncampbell/Downloads/mldata/ceas08-1/data"
+d = args.input
 
 words = {}
 documents = {}
@@ -93,7 +95,8 @@ def pick_boundary(boundaries):
 				start = get_boundary_starts(boundary, None)
 				return boundary[start[0]:]
 
-files = os.listdir(d)[:1000]
+files = os.listdir(d)
+files = files[args.offset:(args.limit or len(files))]
 
 #print "Files:",files
 
