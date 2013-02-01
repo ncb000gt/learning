@@ -106,6 +106,8 @@ for f in files:
 	boundary = find_boundary(contents)
 	boundaries = split_boundaries(contents, boundary)
 	chosen = pick_boundary(boundaries)
+	if chosen == None:
+		continue
 	strip_stopwords()
 	doc_words = count_words(chosen)
 	doc_words_count = len(doc_words.keys())
