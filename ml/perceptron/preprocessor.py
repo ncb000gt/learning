@@ -1,13 +1,15 @@
 #!/bin/python
 
+from __future__ import division
 import os, pickle, re, argparse
-import string
+import string, math
 
 parser = argparse.ArgumentParser(description="Prepare for perceptron.")
 parser.add_argument("--input",required=True,help="Specify the input data directory.")
-parser.add_argument("--output",required=True,help="Specify the output file.")
-parser.add_argument("--offset",help="Where to start processing files from.",type=int,default=0)
 parser.add_argument("--limit",help="Where to limit processing files from.",type=int)
+parser.add_argument("--comparison",help="File containing spam/ham specifications.")
+parser.add_argument("--test",help="File to dump the testing data into.")
+parser.add_argument("--train",help="File to dump the training data into.")
 args = parser.parse_args()
 
 stop_words = ['a','able','about','across','after','all','almost','also','am','among',
@@ -25,9 +27,9 @@ re_boundary = re.compile("boundary\=\"([^\"]*)\"")
 re_newline_boundary = re.compile("^\n")
 re_plain_text = re.compile("text\/plain")
 d = args.input
+PERCENT_TEST = .1
 
 words = {}
-documents = {}
 
 def strip_stopwords():
 	keys = words.keys()
@@ -47,6 +49,9 @@ def count_words(lines):
 			words[s] += 1
 			doc_words[s] += 1
 	return doc_words
+
+############
+#Email Code
 
 def find_boundary(lines):
 	for line in lines:
@@ -95,32 +100,87 @@ def pick_boundary(boundaries):
 				start = get_boundary_starts(boundary, None)
 				return boundary[start[0]:]
 
-files = os.listdir(d)
-files = files[args.offset:(args.limit or len(files))]
+def parse_documents(files, targets):
+	documents = {}
+	for f in files:
+		_f = open(os.path.join(d, f))
+		contents = _f.readlines()
+		boundary = find_boundary(contents)
+		boundaries = split_boundaries(contents, boundary)
+		chosen = pick_boundary(boundaries)
+		if chosen == None:
+			continue
+		strip_stopwords()
+		doc_words = count_words(chosen)
+		doc_words_count = len(doc_words.keys())
+		for word in doc_words:
+			doc_words[word] = doc_words[word] / doc_words_count
+		documents[f] = {
+				"target": targets[f],
+				"words": doc_words
+				}
+	return documents
 
-#print "Files:",files
+###########
+# ML Stuff
 
-for f in files:
-	_f = open(os.path.join(d, f))
-	contents = _f.readlines()
-	boundary = find_boundary(contents)
-	boundaries = split_boundaries(contents, boundary)
-	chosen = pick_boundary(boundaries)
-	if chosen == None:
-		continue
-	strip_stopwords()
-	doc_words = count_words(chosen)
-	doc_words_count = len(doc_words.keys())
-	for word in doc_words:
-		doc_words[word] /= doc_words_count
-	documents[f] = {
-			"words": doc_words,
-			"word_count": doc_words_count
+def initialize_target_data(f):
+	data = {}
+	for line in open(f, "r").readlines():
+		split = line.split()
+		if split[0] == "spam":
+			t = [1]
+		else:
+			t = [0]
+		f = split[1].split("/")[-1]
+		data[f] = t
+	return data
+
+def setup_inputs(doc_words):
+	tmp = []
+	for word in words:
+		if word in doc_words:
+			tmp.append(doc_words[word])
+		else:
+			tmp.append(0)
+	return tmp
+
+def process_inputs(doc, f):
+	doc_words = doc["words"]
+	target = doc["target"]
+	vector = None
+	doc_vector = setup_inputs(doc_words)
+	if target <> None:
+		vector = (doc_vector, target)
+	else:
+		vector = (doc_vector)
+	return {
+			"vector": vector
 			}
 
+def convert_to_vectors(docs):
+	for doc in docs:
+		docs[doc] = process_inputs(docs[doc], doc)
+	return docs
 
-tmp = {
-		"words": words,
-		"documents": documents
-		}
-pickle.dump(tmp, open(args.output, "w"))
+############
+# Functional Code
+
+files = os.listdir(d)
+files = files[:(args.limit or len(files))]
+targets = initialize_target_data(args.comparison)
+max_test = int(math.floor(len(files) * PERCENT_TEST))
+test = parse_documents(files[:max_test], targets)
+train = parse_documents(files[(max_test+1):], targets)
+all_inputs = sorted(words.keys())
+test = convert_to_vectors(test)
+train = convert_to_vectors(train)
+
+pickle.dump({
+	"inputs": all_inputs,
+	"vectors": test
+	}, open(args.test, "w"))
+pickle.dump({
+	"inputs": all_inputs,
+	"vectors": train
+	}, open(args.train, "w"))
