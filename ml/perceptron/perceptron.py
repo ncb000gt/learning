@@ -8,6 +8,7 @@ parser.add_argument("--input",required=True,help="Specify the input data file.")
 parser.add_argument("--iterations",help="Number of iterations.",type=int,default=5)
 parser.add_argument("--train",action="store_true")
 parser.add_argument("--test",action="store_true")
+parser.add_argument("--firstrun",action="store_true")
 parser.add_argument("--model",help="Where are we dumping the model after generated.")
 args = parser.parse_args()
 
@@ -98,9 +99,10 @@ def save_model(model):
 
 #stop using functions and actually do something!
 vectors, inputs, INPUTS = initialize_data()
-if args.model and not args.train:
+model_exists = os.path.exists(args.model)
+if (args.model and not args.train) or (model_exists and args.train and not args.firstrun):
 	weights, inputs, INPUTS = load_model()
-else:
+elif not model_exists and args.train:
 	weights = initialize_random_weights()
 
 
