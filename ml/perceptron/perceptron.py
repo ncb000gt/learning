@@ -80,16 +80,38 @@ def run(vectors, weights):
 	return decisions, weights
 
 def test_neurons(results, vectors):
-	print results
+	total = 0
+	matched = 0
+	positive = [0, 0]
+	negative = [0, 0]
 	for result in results:
+		total = total + 1
 		_result = results[result]
 		_test = vectors[result]["vector"][-1]
 		for j in range(NEURONS):
 			if _result[j] <> _test[j]:
 				print result, "INCORRECT MATCH:", _result, _test
+				if _result[j] == 1:
+					positive[1] = positive[1] + 1
+				else:
+					negative[1] = negative[1] + 1
 				break
 			else:
 				print result, "CORRECT MATCH"
+				if _result[j] == 1:
+					positive[0] = positive[0] + 1
+				else:
+					negative[0] = negative[0] + 1
+				matched = matched + 1
+	print "-------------------"
+	print "    Totals"
+	print "-------------------"
+	print "Total Results:",total
+	print "Total Matched:",matched
+	print "Positive is spam, Negative is ham"
+	print "Positive [T, F]:", positive
+	print "Negative [T, F]:", negative
+	print "Error:", int(((total - matched) / float(total)) * 100),"%"
 
 def spam_or_ham(results):
 	pass
