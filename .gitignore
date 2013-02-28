@@ -4,3 +4,6 @@
 *.class
 *.o
 *.out
+out/*
+perceptron
+config.json
