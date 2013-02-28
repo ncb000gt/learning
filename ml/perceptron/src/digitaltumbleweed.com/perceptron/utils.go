@@ -5,6 +5,10 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"strconv"
+	"os"
+	"bufio"
+	"io"
+	"strings"
 )
 /*
  * Configuration
@@ -117,3 +121,36 @@ func StringToFloatSlice(a []string) []float64 {
 
 	return s
 }
+
+func GetTestValues(file string) map[string][]int {
+	f, err := os.Open(file)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	bf := bufio.NewReader(f)
+
+	m := make(map[string][]int)
+
+	for {
+		line, err := bf.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		
+		s := strings.Split(line, " ")
+		v := make([]int, 1)
+		if s[0] == "spam" {
+			v[0] = 1
+		} else {
+			v[0] = 0
+		}
+		s1 := strings.Split(s[1], "/")
+		k := strings.TrimSpace(s1[len(s1) - 1])
+
+		m[k] = v //we're only doing this because we have a predefined notion of spam and ham which has 1 neuron
+	}
+
+	return m
+}
+

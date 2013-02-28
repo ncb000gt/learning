@@ -3,7 +3,8 @@
 *.pyc
 *.class
 *.o
+*.a
 *.out
-out/*
-perceptron
+ml/perceptron/out
+ml/perceptron/perceptron
 config.json

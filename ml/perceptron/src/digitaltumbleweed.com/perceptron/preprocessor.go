@@ -228,38 +228,6 @@ func splitAndGatherCounts(docs *map[string]string) ([]string, map[string]map[str
 	return words, ndocs
 }
 
-func getTestValues(file string) map[string][]int {
-	f, err := os.Open(file)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	bf := bufio.NewReader(f)
-
-	m := make(map[string][]int)
-
-	for {
-		line, err := bf.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		
-		s := strings.Split(line, " ")
-		v := make([]int, 1)
-		if s[0] == "spam" {
-			v[0] = 1
-		} else {
-			v[0] = 0
-		}
-		s1 := strings.Split(s[1], "/")
-		k := strings.TrimSpace(s1[len(s1) - 1])
-
-		m[k] = v //we're only doing this because we have a predefined notion of spam and ham which has 1 neuron
-	}
-
-	return m
-}
-
 func RunPreprocessor(config *Config) {
 	fmt.Println("Preprocess Starting")
 	fmt.Println(*config)
@@ -291,7 +259,7 @@ func RunPreprocessor(config *Config) {
 	Inputs := csv.NewWriter(inputs)
 
 	words, ndocs := splitAndGatherCounts(&docs)
-	m := getTestValues((*config).Preprocessor.Test)
+	m := GetTestValues((*config).Preprocessor.Test)
 	vectorize(&words, &ndocs, &m, &(*config).Neurons, &(*config).Preprocessor.TestCount, Inputs, Train, Test)
 
 	fmt.Println("Preprocess Finished")

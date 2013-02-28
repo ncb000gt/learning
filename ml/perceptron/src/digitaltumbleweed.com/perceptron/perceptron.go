@@ -35,9 +35,9 @@ func g(W [][]float64, V []float64) []float64 {
 	return NEURONS
 }
 
-func activation(NEURONS []float64) []int {
+func activation(NEURONS []float64) []int64 {
 	N := len(NEURONS)
-	ACTIVATED := make([]int, N)
+	ACTIVATED := make([]int64, N)
 
 	for j := 0; j < N; j++ {
 		active := 0
@@ -46,14 +46,14 @@ func activation(NEURONS []float64) []int {
 			active = 1
 		}
 
-		ACTIVATED[j] = active
+		ACTIVATED[j] = int64(active)
 	}
 
 	return ACTIVATED
 }
 
 var LEARNING_RATE = 0.1
-func adjustWeights(W [][]float64, V []float64, Y []int, T []int64) [][]float64 {
+func adjustWeights(W [][]float64, V []float64, Y []int64, T []int64) [][]float64 {
 	N := len(W)
 	I := len(V)
 	NW := make([][]float64, N)
@@ -61,7 +61,7 @@ func adjustWeights(W [][]float64, V []float64, Y []int, T []int64) [][]float64 {
 	for j := 0; j < N; j++ {
 		NWn := make([]float64, I)
 		for i := 0; i < I; i++ {
-			NWn[i] = W[j][i] + (LEARNING_RATE * float64(T[j] - int64(Y[j])) * V[i])
+			NWn[i] = W[j][i] + (LEARNING_RATE * float64(T[j] - Y[j]) * V[i])
 		}
 		NW[j] = NWn
 	}
@@ -112,7 +112,32 @@ type Model struct {
 
 type VectorFunc func(Doc)
 
-func ProcessVectors(file string, NEURONS int, vf VectorFunc) {
+func readLine(r *csv.Reader, NEURONS int) (Doc, error) {
+	line, err := ReadLine(r)
+	if err == io.EOF {
+		var doc Doc
+		return doc, err
+	}
+	if err != nil {
+		panic(err)
+	}
+
+	var doc Doc
+	doc.File = line[0]
+	for i := 1; i < (len(line) - NEURONS); i++ {
+		fl, _ := strconv.ParseFloat(line[i], 64)
+		doc.Vector = append(doc.Vector, fl)
+	}
+
+	for i := len(line) - NEURONS; i < len(line); i++ {
+		il, _ := strconv.ParseInt(line[i], 10, 64)
+		doc.Test = append(doc.Test, il)
+	}
+
+	return doc, nil
+}
+
+func ProcessVectors(file string, NEURONS int, model Model) Model {
 	f, err := os.Open(file)
 	if err != nil {
 		panic(err)
@@ -120,29 +145,47 @@ func ProcessVectors(file string, NEURONS int, vf VectorFunc) {
 	defer f.Close()
 	r := csv.NewReader(f)
 
+	W := model.Weights
+
 	for {
-		line, err := ReadLine(r)
+		doc, err := readLine(r, NEURONS)
 		if err == io.EOF {
 			break
 		}
-		if err != nil {
-			panic(err)
-		}
 
-		var doc Doc
-		doc.File = line[0]
-		for i := 1; i < (len(line) - NEURONS); i++ {
-			fl, _ := strconv.ParseFloat(line[i], 64)
-			doc.Vector = append(doc.Vector, fl)
-		}
-
-		for i := len(line) - NEURONS; i < len(line); i++ {
-			il, _ := strconv.ParseInt(line[i], 10, 64)
-			doc.Test = append(doc.Test, il)
-		}
-
-		vf(doc)
+		W = adjustWeights(W, doc.Vector, activation(g(W, doc.Vector)), doc.Test)
 	}
+
+	model.Weights = W
+	return model
+}
+
+func TestVectors(file string, NEURONS int, model Model) map[string][][]int64 {
+	m := make(map[string][][]int64)
+
+	f, err := os.Open(file)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	r := csv.NewReader(f)
+
+	W := model.Weights
+
+	for {
+		doc, err := readLine(r, NEURONS)
+		if err == io.EOF {
+			break
+		}
+
+		activations := activation(g(W, doc.Vector))
+		a := make([][]int64, 2)
+		a[0] = activations
+		a[1] = doc.Test
+		m[doc.File] = a
+	}
+
+	return m
 }
 
 func writeModel(model Model, file string) {
@@ -191,14 +234,61 @@ func TrainPerceptron(config *Config) {
 	}
 
 	for i := 0; i < (*config).Perceptron.Iterations; i++ {
-		ProcessVectors((*config).Train, (*config).Neurons, func(doc Doc) {
-			model.Weights = adjustWeights(model.Weights, doc.Vector, activation(g(model.Weights, doc.Vector)), doc.Test)
-		})
+		model = ProcessVectors((*config).Train, (*config).Neurons, model)
 	}
 
 	writeModel(model, (*config).Perceptron.Model)
-	fmt.Println(model)
+}
+
+func evaluate(m map[string][][]int64, NEURONS int) {
+	total := 0
+	matched := 0
+	positive := make([]int, 2)
+	/*[0, 0]*/
+	negative := make([]int, 2)
+	/*[0, 0]*/
+
+	for f, v := range m {
+		total++
+
+		_result := v[0]
+		_test := v[1]
+		for j := 0; j < NEURONS; j++ {
+			if _result[j] != _test[j] {
+				fmt.Println(f, "NOT MATCH:", _result, _test)
+				if _result[j] == 1 {
+					positive[1]++
+				} else {
+					negative[1]++
+				}
+				break
+			} else {
+				fmt.Println(f, "MATCH")
+				if _result[j] == 1 {
+					positive[0]++
+				} else {
+					negative[0]++
+				}
+				matched++
+			}
+		}
+	}
+
+	fmt.Println("-------------------")
+	fmt.Println("    Totals")
+	fmt.Println("-------------------")
+	fmt.Println("Total Results:",total)
+	fmt.Println("Total Matched:",matched)
+	fmt.Println("Positive is spam, Negative is ham")
+	fmt.Println("Positive [T, F]:", positive)
+	fmt.Println("Negative [T, F]:", negative)
+	fmt.Println("Error:", int((float64(total - matched) / float64(total)) * 100.0),"%")
 }
 
 func TestPerceptron(config *Config) {
+	inputs, _ := ReadInput((*config).Inputs)
+	var model Model
+	model.Weights = loadModel((*config).Perceptron.Model, len(inputs), (*config).Neurons)
+	m := TestVectors((*config).Test, (*config).Neurons, model)
+	evaluate(m, (*config).Neurons)
 }
