@@ -154,3 +154,16 @@ func GetTestValues(file string) map[string][]int {
 	return m
 }
 
+func ReadLine(reader *csv.Reader) ([]string, error) {
+	return (*reader).Read()
+}
+
+func ReadInput(file string) ([]string, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	return ReadLine(csv.NewReader(f))
+}

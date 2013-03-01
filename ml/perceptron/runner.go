@@ -9,6 +9,7 @@ import (
 func main() {
 	configFile := goopt.String([]string{"--config"}, "./config.json", "Configuration File")
 	var action = goopt.String([]string{"--action"}, "", "Action to run")
+	var file = goopt.String([]string{"--file"}, "", "File to classify")
 	goopt.Description = func() string {
 		return "Perceptron 2.0"
 	}
@@ -16,8 +17,6 @@ func main() {
 	goopt.Summary = "Perceptron"
 	goopt.Parse(nil)
 
-	fmt.Println("WUUUT? ", *configFile)
-	fmt.Println("Action: ", *action)
 	json := perceptron.ReadConfig(*configFile)
 	if *action == "preprocess" {
 		perceptron.RunPreprocessor(&json)
@@ -25,5 +24,7 @@ func main() {
 		perceptron.TrainPerceptron(&json)
 	} else if *action == "test" {
 		perceptron.TestPerceptron(&json)
+	} else {
+		perceptron.Preprocess(&json, file)
 	}
 }

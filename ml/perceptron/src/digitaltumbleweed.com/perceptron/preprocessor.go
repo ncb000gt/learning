@@ -165,7 +165,7 @@ func vectorize(inputs *[]string, docs *map[string]map[string]float64, tests *map
 	(*Inputs).Flush()
 
 	count := 0.0
-	ldocs := len(*docs) 
+	ldocs := len(*docs)
 	linputs := len(*inputs)
 	for d, doc := range *docs {
 		vector := make([]string, linputs + *NEURONS + 1)
@@ -228,6 +228,19 @@ func splitAndGatherCounts(docs *map[string]string) ([]string, map[string]map[str
 	return words, ndocs
 }
 
+func Preprocess(config *Config, file string) {
+	Inputs := ReadInput((*config).Inputs)
+
+	name := path.Base(file)
+	text := strings.TrimSpace(getTextfile))
+	if text == "" {
+		panic("File has no good data.")
+	}
+
+	text = removeJunk(&text)
+	words, ndocs := splitAndGatherCounts(&docs)
+}
+
 func RunPreprocessor(config *Config) {
 	fmt.Println("Preprocess Starting")
 	fmt.Println(*config)
@@ -250,12 +263,12 @@ func RunPreprocessor(config *Config) {
 
 	train, _ := os.Create((*config).Train)
 	defer train.Close()
+	Train := csv.NewWriter(train)
 	test, _ := os.Create((*config).Test)
 	defer test.Close()
+	Test := csv.NewWriter(test)
 	inputs, _ := os.Create((*config).Inputs)
 	defer inputs.Close()
-	Train := csv.NewWriter(train)
-	Test := csv.NewWriter(test)
 	Inputs := csv.NewWriter(inputs)
 
 	words, ndocs := splitAndGatherCounts(&docs)
