@@ -25,6 +25,8 @@ func main() {
 	} else if *action == "test" {
 		perceptron.TestPerceptron(&json)
 	} else {
-		perceptron.Preprocess(&json, file)
+		perceptron.Preprocess(&json, *file, func(vector []string) {
+			fmt.Println(perceptron.RunPerceptron(&json, vector))
+		})
 	}
 }

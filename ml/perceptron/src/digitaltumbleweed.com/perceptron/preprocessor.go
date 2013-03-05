@@ -157,12 +157,16 @@ func removeJunk(junked *string) string {
 	return dejunked
 }
 
-func vectorize(inputs *[]string, docs *map[string]map[string]float64, tests *map[string][]int, NEURONS *int, TestNum *float64, Inputs *csv.Writer, Train *csv.Writer, Test *csv.Writer) {
+type VectorizeHandler func([]string, float64, int, float64)
+
+func vectorize(inputs *[]string, docs *map[string]map[string]float64, tests *map[string][]int, NEURONS *int, TestNum *float64, Inputs *csv.Writer, f VectorizeHandler) {
 	//dump inputs to disk
-	if err := (*Inputs).Write(*inputs); err != nil {
-		panic("Error writing inputs.")
+	if Inputs != nil {
+		if err := (*Inputs).Write(*inputs); err != nil {
+			panic("Error writing inputs.")
+		}
+		(*Inputs).Flush()
 	}
-	(*Inputs).Flush()
 
 	count := 0.0
 	ldocs := len(*docs)
@@ -179,20 +183,16 @@ func vectorize(inputs *[]string, docs *map[string]map[string]float64, tests *map
 			vector[idx+1] = strconv.FormatFloat(val, 'f', -1, 64)
 		}
 		
-		test := (*tests)[d]
-		for i := 1; i <= *NEURONS; i++ {
-			vector[linputs+i] = strconv.FormatInt(int64(test[i-1]), 10)
+		if tests != nil {
+			test := (*tests)[d]
+			for i := 1; i <= *NEURONS; i++ {
+				vector[linputs+i] = strconv.FormatInt(int64(test[i-1]), 10)
+			}
 		}
 
-		if count/float64(ldocs) >= *TestNum {
-			(*Train).Write(vector)
-		} else {
-			(*Test).Write(vector)
-		}
+		f(vector, count, ldocs, *TestNum)
 		count++
 	}
-	(*Train).Flush()
-	(*Test).Flush()
 }
 
 var re_non_ascii, _ = regexp.Compile("(?i)[^a-z0-9]")
@@ -228,17 +228,25 @@ func splitAndGatherCounts(docs *map[string]string) ([]string, map[string]map[str
 	return words, ndocs
 }
 
-func Preprocess(config *Config, file string) {
-	Inputs := ReadInput((*config).Inputs)
+type VectorHandler func([]string)
+
+func Preprocess(config *Config, file string, f VectorHandler) {
+	Inputs, _ := ReadInput((*config).Inputs)
 
 	name := path.Base(file)
-	text := strings.TrimSpace(getTextfile))
+	text := strings.TrimSpace(getText(file))
 	if text == "" {
 		panic("File has no good data.")
 	}
+	docs := make(map[string]string)
 
 	text = removeJunk(&text)
-	words, ndocs := splitAndGatherCounts(&docs)
+	docs[name] = text
+	_, ndocs := splitAndGatherCounts(&docs)
+	
+	vectorize(&Inputs, &ndocs, nil, &(*config).Neurons, &(*config).Preprocessor.TestCount, nil, func(vector []string, _ float64, _ int, _ float64) {
+		f(vector)
+	})
 }
 
 func RunPreprocessor(config *Config) {
@@ -273,7 +281,15 @@ func RunPreprocessor(config *Config) {
 
 	words, ndocs := splitAndGatherCounts(&docs)
 	m := GetTestValues((*config).Preprocessor.Test)
-	vectorize(&words, &ndocs, &m, &(*config).Neurons, &(*config).Preprocessor.TestCount, Inputs, Train, Test)
+	vectorize(&words, &ndocs, &m, &(*config).Neurons, &(*config).Preprocessor.TestCount, Inputs, func(vector []string, count float64, ldocs int, testNum float64) {
+		if count/float64(ldocs) >= testNum {
+			(*Train).Write(vector)
+			(*Train).Flush()
+		} else {
+			(*Test).Write(vector)
+			(*Test).Flush()
+		}
+	})
 
 	fmt.Println("Preprocess Finished")
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"encoding/json"
+	"encoding/csv"
 	"strconv"
 	"os"
 	"bufio"

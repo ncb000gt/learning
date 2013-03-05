@@ -108,6 +108,10 @@ func readLine(r *csv.Reader, NEURONS int) (Doc, error) {
 		panic(err)
 	}
 
+	return lineToDoc(line, NEURONS), nil
+}
+
+func lineToDoc(line []string, NEURONS int) Doc {
 	var doc Doc
 	doc.File = line[0]
 	for i := 1; i < (len(line) - NEURONS); i++ {
@@ -120,7 +124,7 @@ func readLine(r *csv.Reader, NEURONS int) (Doc, error) {
 		doc.Test = append(doc.Test, il)
 	}
 
-	return doc, nil
+	return doc
 }
 
 func ProcessVectors(file string, NEURONS int, model Model) Model {
@@ -164,14 +168,26 @@ func TestVectors(file string, NEURONS int, model Model) map[string][][]int64 {
 			break
 		}
 
-		activations := activation(g(W, doc.Vector))
-		a := make([][]int64, 2)
-		a[0] = activations
-		a[1] = doc.Test
-		m[doc.File] = a
+		m[doc.File] = testVector(doc, W)
 	}
 
 	return m
+}
+
+func testVector(doc Doc, weights [][]float64) [][]int64 {
+	activations := activation(g(weights, doc.Vector))
+	a := make([][]int64, 2)
+	a[0] = activations
+	a[1] = doc.Test
+
+	return a
+}
+
+func spamOrHam(results []int64) string {
+	if results[0] == 1 {
+		return "spam"
+	}
+	return "ham"
 }
 
 func writeModel(model Model, file string) {
@@ -277,4 +293,12 @@ func TestPerceptron(config *Config) {
 	model.Weights = loadModel((*config).Perceptron.Model, len(inputs), (*config).Neurons)
 	m := TestVectors((*config).Test, (*config).Neurons, model)
 	evaluate(m, (*config).Neurons)
+}
+
+func RunPerceptron(config *Config, vector []string) string {
+	inputs, _ := ReadInput((*config).Inputs)
+	var model Model
+	model.Weights = loadModel((*config).Perceptron.Model, len(inputs), (*config).Neurons)
+	doc := lineToDoc(vector, (*config).Neurons)
+	return spamOrHam(testVector(doc, model.Weights)[0])
 }
